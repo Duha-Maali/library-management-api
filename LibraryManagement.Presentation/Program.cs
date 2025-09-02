@@ -1,6 +1,7 @@
 using System.Text;
 using LibraryManagement.Business.Configurations;
 using LibraryManagement.Data.Configurations;
+using LibraryManagement.Presentation.Middlewares;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
@@ -15,13 +16,14 @@ Log.Logger = new LoggerConfiguration()
     .WriteTo.File(
         path: "logs/LibraryManagementLog-.log",
         rollingInterval: RollingInterval.Day,
-        outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss} [{Level:u3}] {SourceContext} UserId={UserId} Role={RoleName} {Message:lj}{NewLine}{Exception}")
+        outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss} [{Level:u3}] {SourceContext} UserName={UserName} Role={RoleName} {Message:lj}{NewLine}{Exception}")
     .CreateLogger();
 
 // Plug into ASP.NET Core logging pipeline
 builder.Host.UseSerilog();
 
 builder.Services.AddControllers();
+
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>
@@ -91,6 +93,7 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 app.UseAuthentication();
+app.UseMiddleware<LoggingScopeMiddleware>();
 app.UseAuthorization();
 app.MapControllers();
 

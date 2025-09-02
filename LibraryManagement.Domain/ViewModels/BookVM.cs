@@ -21,13 +21,13 @@ public class BookVM
     public DateTime? PublishedDate { get; set; }
 
     [Required]
-    public int CategoryId { get; set; }
+    public string CategoryName { get; set; } = null!;
 
     [Required]
     [Range(0, int.MaxValue)]
     public int TotalCopies { get; set; }
 
-
-    [JsonIgnore]
-    public int AvailableCopies => TotalCopies - 1;
+    [Required]
+    [Range(0, int.MaxValue)]
+    public int BorrowedCopies { get; set; }
 }

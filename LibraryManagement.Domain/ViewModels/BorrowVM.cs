@@ -7,10 +7,10 @@ public class BorrowVM
     public int BorrowId { get; set; }
 
     [Required]
-    public int BorrowerId { get; set; }
+    public string BorrowerName { get; set; } = null!;
 
     [Required]
-    public int BookId { get; set; }
+    public string BookTitle { get; set; } = null!;
 
     [Required]
     public DateTime BorrowDate { get; set; }

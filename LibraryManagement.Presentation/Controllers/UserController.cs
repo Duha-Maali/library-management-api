@@ -5,7 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace LibraryManagement.Presentation.Controllers;
 
-[Route("api/[controller]/[action]")]
+[Route("api/[controller]")]
 [ApiController]
 public class UserController : ControllerBase
 {
@@ -19,9 +19,8 @@ public class UserController : ControllerBase
     public async Task<IActionResult> Login([FromBody] LoginVM request)
     {
         var token = await _userService.LoginAsync(request);
-        if (token == null)
-            return Unauthorized("Invalid username or password.");
-
-        return Ok(new { Token = token });
+        return token is not null
+            ? Ok(new { Token = token })
+            : Unauthorized("Invalid username or password.");
     }
 }

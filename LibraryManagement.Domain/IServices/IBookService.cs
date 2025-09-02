@@ -7,7 +7,7 @@ public interface IBookService
 {
     Task<IEnumerable<BookVM>?> GetAllAsync();
     Task<BookVM?> GetByIdAsync(int id);
-    Task<BookVM> CreateAsync(BookVM book);
-    Task<BookVM> UpdateAsync(int id, BookVM book);
+    Task<BookVM?> CreateAsync(CreateBookVM book);
+    Task<BookVM?> UpdateAsync(int id, CreateBookVM book);
     Task<bool> DeleteAsync(int id);
 }

@@ -27,11 +27,15 @@ public class LibraryDbContext : DbContext
             .IsRequired()
             .HasMaxLength(100)
             .IsUnicode(true);
-        //modelBuilder.Entity<Category>()
-        //    .HasOne(c => c.User)
-        //    .WithMany()
-        //    .HasForeignKey(c => c.UserId)
-        //    .OnDelete(DeleteBehavior.Restrict);
+        // Add unique index on CategoryName
+        modelBuilder.Entity<Category>()
+            .HasIndex(c => c.CategoryName)
+            .IsUnique();
+        modelBuilder.Entity<Category>()
+            .HasOne(c => c.User)
+            .WithMany()
+            .HasForeignKey(c => c.UserId)
+            .OnDelete(DeleteBehavior.Restrict);
 
         // Configure Book
         modelBuilder.Entity<Book>()
@@ -51,18 +55,18 @@ public class LibraryDbContext : DbContext
             .Property(b => b.TotalCopies)
             .IsRequired();
         modelBuilder.Entity<Book>()
-            .Property(b => b.AvailableCopies)
+            .Property(b => b.BorrowedCopies)
             .IsRequired();
         modelBuilder.Entity<Book>()
             .HasOne(b => b.Category)
             .WithMany()
             .HasForeignKey(b => b.CategoryId)
             .OnDelete(DeleteBehavior.Restrict);
-        //modelBuilder.Entity<Book>()
-        //    .HasOne(b => b.User)
-        //    .WithMany()
-        //    .HasForeignKey(b => b.UserId)
-        //    .OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<Book>()
+            .HasOne(b => b.User)
+            .WithMany()
+            .HasForeignKey(b => b.UserId)
+            .OnDelete(DeleteBehavior.Restrict);
 
         // Configure Borrower
         modelBuilder.Entity<Borrower>()
@@ -76,11 +80,11 @@ public class LibraryDbContext : DbContext
             .IsRequired()
             .HasMaxLength(15)
             .IsUnicode(false);
-        //modelBuilder.Entity<Borrower>()
-        //    .HasOne(b => b.User)
-        //    .WithMany()
-        //    .HasForeignKey(b => b.UserId)
-        //    .OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<Borrower>()
+            .HasOne(b => b.User)
+            .WithMany()
+            .HasForeignKey(b => b.UserId)
+            .OnDelete(DeleteBehavior.Restrict);
 
         // Configure Borrow
         modelBuilder.Entity<Borrow>()
@@ -144,15 +148,10 @@ public class LibraryDbContext : DbContext
 
         // Seed Categories
         modelBuilder.Entity<Category>().HasData(
-            new Category { CategoryId = 1, CategoryName = "Law"},
-            new Category { CategoryId = 2, CategoryName = "History"},
-            new Category { CategoryId = 3, CategoryName = "Education"}
+            new Category { CategoryId = 1, CategoryName = "Law", UserId = 2 },
+            new Category { CategoryId = 2, CategoryName = "History", UserId = 2 },
+            new Category { CategoryId = 3, CategoryName = "Education", UserId = 2 }
         );
-        //modelBuilder.Entity<Category>().HasData(
-        //    new Category { CategoryId = 1, CategoryName = "Law", UserId = 2 },
-        //    new Category { CategoryId = 2, CategoryName = "History", UserId = 2 },
-        //    new Category { CategoryId = 3, CategoryName = "Education", UserId = 2 }
-        //);
 
         // Seed Books
         modelBuilder.Entity<Book>().HasData(
@@ -165,7 +164,8 @@ public class LibraryDbContext : DbContext
                 PublishedDate = new DateTime(1960, 7, 11),
                 CategoryId = 3,
                 TotalCopies = 5,
-                AvailableCopies = 4
+                BorrowedCopies = 1,
+                UserId = 2
             },
             new Book
             {
@@ -176,7 +176,8 @@ public class LibraryDbContext : DbContext
                 PublishedDate = new DateTime(2011, 2, 10),
                 CategoryId = 1,
                 TotalCopies = 3,
-                AvailableCopies = 2
+                BorrowedCopies = 1,
+                UserId = 2
             },
             new Book
             {
@@ -187,57 +188,16 @@ public class LibraryDbContext : DbContext
                 PublishedDate = new DateTime(1988, 3, 1),
                 CategoryId = 2,
                 TotalCopies = 4,
-                AvailableCopies = 3
+                BorrowedCopies = 1,
+                UserId = 2
             }
         );
-        //modelBuilder.Entity<Book>().HasData(
-        //    new Book
-        //    {
-        //        BookId = 1,
-        //        Title = "Introduction to Database Systems",
-        //        Author = "Harper Lee",
-        //        ISBN = "9780446310788",
-        //        PublishedDate = new DateTime(1960, 7, 11),
-        //        CategoryId = 3,
-        //        TotalCopies = 5,
-        //        AvailableCopies = 4,
-        //        UserId = 2
-        //    },
-        //    new Book
-        //    {
-        //        BookId = 2,
-        //        Title = "Law of Palestine",
-        //        Author = "Sami Omar",
-        //        ISBN = "9780062316097",
-        //        PublishedDate = new DateTime(2011, 2, 10),
-        //        CategoryId = 1,
-        //        TotalCopies = 3,
-        //        AvailableCopies = 4,
-        //        UserId = 2
-        //    },
-        //    new Book
-        //    {
-        //        BookId = 3,
-        //        Title = "The History of Palestine",
-        //        Author = "Ahmed Khaled",
-        //        ISBN = "9780553380163",
-        //        PublishedDate = new DateTime(1988, 3, 1),
-        //        CategoryId = 2,
-        //        TotalCopies = 4,
-        //        AvailableCopies = 1,
-        //        UserId = 2
-        //    }
-        //);
 
         // Seed Borrowers
         modelBuilder.Entity<Borrower>().HasData(
-            new Borrower { BorrowerId = 1, Name = "Ahmad Khaled", Phone = "1234567890"},
-            new Borrower { BorrowerId = 2, Name = "Sara Ali", Phone = "0987654321"}
+            new Borrower { BorrowerId = 1, Name = "Ahmad Khaled", Phone = "1234567890", UserId = 1 },
+            new Borrower { BorrowerId = 2, Name = "Sara Ali", Phone = "0987654321", UserId = 1 }
         );
-        //modelBuilder.Entity<Borrower>().HasData(
-        //    new Borrower { BorrowerId = 1, Name = "Ahmad Khaled", Phone = "1234567890", UserId = 1 },
-        //    new Borrower { BorrowerId = 2, Name = "Sara Ali", Phone = "0987654321", UserId = 1 }
-        //);
 
         // Seed Borrows
         modelBuilder.Entity<Borrow>().HasData(

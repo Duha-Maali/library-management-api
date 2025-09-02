@@ -4,6 +4,8 @@ using LibraryManagement.Business.ViewModels;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using static System.Runtime.InteropServices.JavaScript.JSType;
+using static Microsoft.EntityFrameworkCore.DbLoggerCategory;
 
 namespace LibraryManagement.Presentation.Controllers;
 
@@ -23,63 +25,44 @@ public class BorrowerController : ControllerBase
     public async Task<IActionResult> GetAll()
     {
         var borrowers = await _borrowerService.GetAllAsync();
-        return Ok(borrowers);
+        return borrowers is not null
+            ? Ok(borrowers)
+            : BadRequest("No borrowers found.");
     }
 
     [HttpGet("{id}")]
     public async Task<IActionResult> GetById([Required][FromRoute][Range(1, int.MaxValue)] int id)
     {
         var borrower = await _borrowerService.GetByIdAsync(id);
-        if (borrower == null) 
-            return NotFound();
-        return Ok(borrower);
+        return borrower is not null
+            ? Ok(borrower)
+            : BadRequest($"Borrower with ID {id} not found.");
     }
 
     [HttpPost]
-    public async Task<IActionResult> Create([FromBody] BorrowerVM borrower)
+    public async Task<IActionResult> Create([FromBody] CreateBorrowerVM borrower)
     {
-        try
-        {
-            var createdBorrower = await _borrowerService.CreateAsync(borrower);
-            return CreatedAtAction(nameof(GetById), new { id = createdBorrower.BorrowerId }, createdBorrower);
-        }
-        catch (InvalidOperationException ex)
-        {
-            return BadRequest(ex.Message);
-        }
+        var createdBorrower = await _borrowerService.CreateAsync(borrower);
+        return createdBorrower is not null
+            ? CreatedAtAction(nameof(GetById), new { id = createdBorrower.BorrowerId }, createdBorrower)
+            : BadRequest("Failed to create borrower. Please ensure all required fields are valid.");      
     }
 
     [HttpPut("{id}")]
-    public async Task<IActionResult> Update([Required][FromRoute][Range(1, int.MaxValue)] int id, [FromBody] BorrowerVM borrower)
+    public async Task<IActionResult> Update([Required][FromRoute][Range(1, int.MaxValue)] int id, [FromBody] CreateBorrowerVM borrower)
     {
-        try
-        {
-            var updatedBorrower = await _borrowerService.UpdateAsync(id, borrower);
-            return Ok(updatedBorrower);
-        }
-        catch (KeyNotFoundException ex)
-        {
-            return NotFound(ex.Message);
-        }
-        catch (InvalidOperationException ex)
-        {
-            return BadRequest(ex.Message);
-        }
+        var updatedBorrower = await _borrowerService.UpdateAsync(id, borrower);
+        return updatedBorrower is not null
+            ? Ok(updatedBorrower)
+            : BadRequest("Failed to update borrower.Make sure the borrower exists and the data provided is valid.");
     }
 
     [HttpDelete("{id}")]
     public async Task<IActionResult> Delete([Required][FromRoute][Range(1, int.MaxValue)] int id)
     {
-        try
-        {
-            var result = await _borrowerService.DeleteAsync(id);
-            if (!result) 
-                return NotFound();
-            return NoContent();
-        }
-        catch (InvalidOperationException ex)
-        {
-            return BadRequest(ex.Message);
-        }
+        var result = await _borrowerService.DeleteAsync(id);
+        return result
+            ? Ok($"Borrower with ID {id} deleted successfully.")
+            : BadRequest("Failed to delete borrower. The borrower may not exist or has active borrow records that must be returned first.");
     }
 }

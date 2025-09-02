@@ -24,64 +24,47 @@ namespace LibraryManagement.Presentation.Controllers
         public async Task<IActionResult> GetAll()
         {
             var categories = await _categoryService.GetAllAsync();
-            return Ok(categories);
+            return categories is not null
+                ? Ok(categories)
+                : BadRequest("No categories found");
         }
 
         [HttpGet("{id}")]
+        [AllowAnonymous]
         public async Task<IActionResult> GetById([Required][FromRoute][Range(1, int.MaxValue)] int id)
         {
             var category = await _categoryService.GetByIdAsync(id);
-            if (category == null) 
-                return NotFound();
-            return Ok(category);
+            return category is not null
+                ? Ok(category)
+                : BadRequest($"Category with ID {id} not found");
         }
 
         [HttpPost]
-        public async Task<IActionResult> Create([FromBody] CategoryVM category)
+        public async Task<IActionResult> Create([FromBody] CreateCategoryVM category)
         {
-            try
-            {
-                var createdCategory = await _categoryService.CreateAsync(category);
-                return CreatedAtAction(nameof(GetById), new { id = createdCategory.CategoryId }, createdCategory);
-            }
-            catch (InvalidOperationException ex)
-            {
-                return BadRequest(ex.Message);
-            }
+            var createdCategory = await _categoryService.CreateAsync(category);
+            return createdCategory is not null
+                ? CreatedAtAction(nameof(GetById), new { id = createdCategory.CategoryId }, createdCategory)
+                : BadRequest("Failed to create category. The name may already exist or the data provided is invalid.");
         }
 
         [HttpPut("{id}")]
-        public async Task<IActionResult> Update([Required][FromRoute][Range(1, int.MaxValue)] int id, [FromBody] CategoryVM category)
+        public async Task<IActionResult> Update([Required][FromRoute][Range(1, int.MaxValue)] int id, [FromBody] CreateCategoryVM category)
         {
-            try
-            {
-                var updatedCategory = await _categoryService.UpdateAsync(id, category);
-                return Ok(updatedCategory);
-            }
-            catch (KeyNotFoundException ex)
-            {
-                return NotFound(ex.Message);
-            }
-            catch (InvalidOperationException ex)
-            {
-                return BadRequest(ex.Message);
-            }
+            var updatedCategory = await _categoryService.UpdateAsync(id, category);
+            return updatedCategory is not null
+                ? Ok(updatedCategory)
+                : BadRequest($"Failed to update category. Make sure the category exists," +
+                $" the name is unique, and the data is valid.");
         }
 
         [HttpDelete("{id}")]
         public async Task<IActionResult> Delete([Required][FromRoute][Range(1, int.MaxValue)] int id)
         {
-            try
-            {
-                var result = await _categoryService.DeleteAsync(id);
-                if (!result) 
-                    return NotFound();
-                return NoContent();
-            }
-            catch (InvalidOperationException ex)
-            {
-                return BadRequest(ex.Message);
-            }
+            var result = await _categoryService.DeleteAsync(id);
+            return result
+                ? NoContent()
+                : BadRequest("Failed to delete category.It may not exist or is currently assigned to one or more books.");
         }
     }
 }

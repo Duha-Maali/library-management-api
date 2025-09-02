@@ -16,16 +16,26 @@ public class GenericRepository<TEntity> : IGenericRepository<TEntity> where TEnt
         _dbSet = _context.Set<TEntity>();
     }
 
-    public async Task<TEntity?> GetByIdAsync(int id)
+    public async Task<TEntity?> GetByIdAsync(int id, params Expression<Func<TEntity, object>>[] includes)
     {
+        IQueryable<TEntity> query = _dbSet.AsNoTracking();
+        foreach (var include in includes)
+        {
+            query = query.Include(include);
+        }
         var entityType = typeof(TEntity).Name;
         var keyName = $"{entityType}Id"; // e.g., BookId, BorrowId
-        return await _dbSet.AsNoTracking().FirstOrDefaultAsync(e => EF.Property<int>(e, keyName) == id);
+        return await query.FirstOrDefaultAsync(e => EF.Property<int>(e, keyName) == id);
     }
 
-    public async Task<IEnumerable<TEntity>> GetAllAsync()
+    public async Task<IEnumerable<TEntity>> GetAllAsync(params Expression<Func<TEntity, object>>[] includes)
     {
-        return await _dbSet.AsNoTracking().ToListAsync();
+        IQueryable<TEntity> query = _dbSet.AsNoTracking();
+        foreach (var include in includes)
+        {
+            query = query.Include(include);
+        }
+        return await query.ToListAsync();
     }
 
     public async Task AddAsync(TEntity entity)

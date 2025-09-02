@@ -2,10 +2,8 @@
 
 namespace LibraryManagement.Business.ViewModels;
 
-public class BorrowerVM
+public class CreateBorrowerVM
 {
-    public int BorrowerId { get; set; }
-
     [Required]
     [StringLength(100)]
     public string Name { get; set; } = null!;

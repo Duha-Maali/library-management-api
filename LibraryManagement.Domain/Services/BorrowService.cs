@@ -1,4 +1,5 @@
-﻿using System.Security.Claims;
+﻿using LibraryManagement.Business.Exceptions;
+using System.Security.Claims;
 using AutoMapper;
 using LibraryManagement.Business.IServices;
 using LibraryManagement.Business.ViewModels;
@@ -34,125 +35,117 @@ public class BorrowService : IBorrowService
         _mapper = mapper;
     }
 
-    private int GetCurrentUserId()
+    public async Task<IEnumerable<BorrowVM>?> GetAllAsync()
     {
-        var userIdClaim = _httpContextAccessor.HttpContext.User.FindFirst("UserId");
-        return int.Parse(userIdClaim.Value);
-    }
-
-    public async Task<IEnumerable<BorrowVM>> GetAllAsync()
-    {
-        using (_logger.BeginScope(new Dictionary<string, object>
-        {
-            ["UserId"] = _httpContextAccessor.HttpContext?.User.FindFirst("UserId")?.Value ?? "Unknown",
-            ["RoleName"] = _httpContextAccessor.HttpContext?.User.FindFirst(ClaimTypes.Role)?.Value ?? "Unknown"
-        }))
+        try
         {
             _logger.LogInformation("Retrieving all borrows");
-            var borrows = await _borrowRepository.GetAllAsync();
+            var borrows = await _borrowRepository.GetAllAsync(b => b.Borrower, b => b.Book);
             _logger.LogInformation("Retrieved {Count} borrows", borrows.Count());
             return _mapper.Map<IEnumerable<BorrowVM>>(borrows);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Unexpected error retrieving borrows");
+            return null;
         }
     }
 
     public async Task<BorrowVM?> GetByIdAsync(int id)
     {
-        using (_logger.BeginScope(new Dictionary<string, object>
-        {
-            ["UserId"] = _httpContextAccessor.HttpContext?.User.FindFirst("UserId")?.Value ?? "Unknown",
-            ["RoleName"] = _httpContextAccessor.HttpContext?.User.FindFirst(ClaimTypes.Role)?.Value ?? "Unknown"
-        }))
+        try
         {
             _logger.LogInformation("Retrieving borrow with BorrowId: {BorrowId}", id);
-            var borrow = await _borrowRepository.GetByIdAsync(id);
+            var borrow = await _borrowRepository.GetByIdAsync(id, b => b.Borrower, b => b.Book);
             if (borrow == null)
             {
-                _logger.LogWarning("Borrow not found with BorrowId: {BorrowId}", id);
-                return null;
+                throw new EntityNotFoundException("Borrow", id);
             }
             _logger.LogInformation("Retrieved borrow with BorrowId: {BorrowId}", borrow.BorrowId);
             return _mapper.Map<BorrowVM>(borrow);
+        }
+        catch (BusinessException ex)
+        {
+            _logger.LogError(ex, "Business error retrieving borrow with BorrowId {BorrowId}: {Message}", id, ex.Message);
+            return null;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Unexpected error retrieving borrow with BorrowId {BorrowId}", id);
+            return null;
         }
     }
 
     public async Task<BorrowVM?> CreateAsync(CreateBorrowVM borrowVM)
     {
-        using (_logger.BeginScope(new Dictionary<string, object>
-        {
-            ["UserId"] = _httpContextAccessor.HttpContext?.User.FindFirst("UserId")?.Value ?? "Unknown",
-            ["RoleName"] = _httpContextAccessor.HttpContext?.User.FindFirst(ClaimTypes.Role)?.Value ?? "Unknown"
-        }))
+        try
         {
             _logger.LogInformation("Creating borrow with BorrowerId: {BorrowerId}, BookId: {BookId}",
-                    borrowVM.BorrowerId, borrowVM.BookId);
+                borrowVM.BorrowerId, borrowVM.BookId);
 
-            // Validate Borrower 
             var borrower = await _borrowerRepository.GetByIdAsync(borrowVM.BorrowerId);
             if (borrower == null)
             {
-                _logger.LogWarning("Borrower not found with BorrowerId: {borrowVM.BorrowerId}", borrowVM.BorrowerId);
-                return null;
+                throw new EntityNotFoundException("Borrower", borrowVM.BorrowerId);
             }
 
-            // Validate Book
             var book = await _bookRepository.GetByIdAsync(borrowVM.BookId);
             if (book == null)
             {
-                _logger.LogWarning("Book not found with BookId: {borrowVM.BookId}", borrowVM.BookId);
-                return null;
+                throw new EntityNotFoundException("Book", borrowVM.BookId);
             }
-
-            // Validate AvailableCopies
-            if (book.AvailableCopies <= 0)
+            int availableCopies = book.TotalCopies - book.BorrowedCopies;
+            if (availableCopies <= 0)
             {
-                _logger.LogWarning("No available copies of the book with BookId: {borrowVM.BookId}", borrowVM.BookId);
-                return null;
+                throw new NoAvailableCopiesException(borrowVM.BookId);
             }
 
-            // Validate Dates
             if (borrowVM.DueDate <= borrowVM.BorrowDate)
             {
-                _logger.LogWarning("DueDate must be after BorrowDate.");
-                return null;
+                throw new InvalidBorrowDateException();
             }
 
-            // Update AvailableCopies
-            book.AvailableCopies--;
+            book.BorrowedCopies++;
             await _bookRepository.UpdateAsync(book);
 
             var borrow = _mapper.Map<Borrow>(borrowVM);
-            borrow.UserId = GetCurrentUserId(); // Assuming UserId is not set during creation
+            borrow.UserId = int.Parse(_httpContextAccessor.HttpContext.User.FindFirst("UserId").Value);
             await _borrowRepository.AddAsync(borrow);
             _logger.LogInformation("Created borrow with BorrowId: {BorrowId}", borrow.BorrowId);
-            return _mapper.Map<BorrowVM>(borrow);
+            var createdBorrow = await _borrowRepository.GetByIdAsync(borrow.BorrowId, b => b.Borrower, b => b.Book);
+            return _mapper.Map<BorrowVM>(createdBorrow);
+        }
+        catch (BusinessException ex)
+        {
+            _logger.LogError(ex, "Business error creating borrow with BorrowerId: {BorrowerId}, BookId: {BookId}: {Message}",
+                borrowVM.BorrowerId, borrowVM.BookId, ex.Message);
+            return null;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Unexpected error creating borrow with BorrowerId: {BorrowerId}, BookId: {BookId}",
+                borrowVM.BorrowerId, borrowVM.BookId);
+            return null;
         }
     }
 
     public async Task<BorrowVM?> UpdateAsync(int id, UpdateBorrowVM borrowVM)
     {
-        using (_logger.BeginScope(new Dictionary<string, object>
-        {
-            ["UserId"] = _httpContextAccessor.HttpContext?.User.FindFirst("UserId")?.Value ?? "Unknown",
-            ["RoleName"] = _httpContextAccessor.HttpContext?.User.FindFirst(ClaimTypes.Role)?.Value ?? "Unknown"
-        }))
+        try
         {
             _logger.LogInformation("Updating borrow with BorrowId: {BorrowId}", id);
             var existingBorrow = await _borrowRepository.GetByIdAsync(id);
             if (existingBorrow == null)
             {
-                _logger.LogWarning("Borrow not found with BorrowId: {BorrowId}", id);
-                return null;
+                throw new EntityNotFoundException("Borrow", id);
             }
 
-            // validate Return date
             if (borrowVM.ReturnDate < existingBorrow.BorrowDate)
             {
-                _logger.LogWarning("ReturnDate cannot be before BorrowDate.");
-                return null;
+                throw new InvalidReturnDateException();
             }
 
             var book = await _bookRepository.GetByIdAsync(existingBorrow.BookId);
-
             if (borrowVM.ReturnDate <= existingBorrow.DueDate)
             {
                 existingBorrow.Status = BorrowStatus.Returned;
@@ -162,43 +155,57 @@ public class BorrowService : IBorrowService
                 existingBorrow.Status = BorrowStatus.Overdue;
             }
 
-            book.AvailableCopies++;
+            book.BorrowedCopies--;
             await _bookRepository.UpdateAsync(book);
 
             _mapper.Map(borrowVM, existingBorrow);
             await _borrowRepository.UpdateAsync(existingBorrow);
             _logger.LogInformation("Updated borrow with BorrowId: {BorrowId}", id);
-            return _mapper.Map<BorrowVM>(existingBorrow);
+            var updatedBorrow = await _borrowRepository.GetByIdAsync(id, b => b.Borrower, b => b.Book);
+            return _mapper.Map<BorrowVM>(updatedBorrow);
+        }
+        catch (BusinessException ex)
+        {
+            _logger.LogError(ex, "Business error updating borrow with BorrowId {BorrowId}: {Message}", id, ex.Message);
+            return null;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Unexpected error updating borrow with BorrowId {BorrowId}", id);
+            return null;
         }
     }
 
     public async Task<bool> DeleteAsync(int id)
     {
-        using (_logger.BeginScope(new Dictionary<string, object>
-        {
-            ["UserId"] = _httpContextAccessor.HttpContext?.User.FindFirst("UserId")?.Value ?? "Unknown",
-            ["RoleName"] = _httpContextAccessor.HttpContext?.User.FindFirst(ClaimTypes.Role)?.Value ?? "Unknown"
-        }))
+        try
         {
             _logger.LogInformation("Deleting borrow with BorrowId: {BorrowId}", id);
             var borrow = await _borrowRepository.GetByIdAsync(id);
             if (borrow == null)
             {
-                _logger.LogWarning("Borrow not found with BorrowId: {BorrowId}", id);
-                return false;
+                throw new EntityNotFoundException("Borrow", id);
             }
 
-            // Prevent deletion of non-returned borrows
             if (borrow.Status != BorrowStatus.Returned)
             {
-                _logger.LogWarning("Cannot delete borrow that is not returned.");
-                return false;
+                throw new BorrowNotReturnedException(id);
             }
 
             borrow.Status = BorrowStatus.Inactive;
             await _borrowRepository.UpdateAsync(borrow);
             _logger.LogInformation("Deleted borrow with BorrowId: {BorrowId}", id);
             return true;
-        }      
+        }
+        catch (BusinessException ex)
+        {
+            _logger.LogError(ex, "Business error deleting borrow with BorrowId {BorrowId}: {Message}", id, ex.Message);
+            return false;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Unexpected error deleting borrow with BorrowId {BorrowId}", id);
+            return false;
+        }
     }
 }

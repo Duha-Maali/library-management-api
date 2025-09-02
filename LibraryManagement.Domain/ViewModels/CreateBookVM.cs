@@ -1,13 +1,10 @@
 ﻿using System.ComponentModel.DataAnnotations;
-using System.ComponentModel.DataAnnotations.Schema;
+using System.Text.Json.Serialization;
 
-namespace LibraryManagement.Data.Models;
+namespace LibraryManagement.Business.ViewModels;
 
-public class Book
+public class CreateBookVM
 {
-    [Key]
-    public int BookId { get; set; }
-
     [Required]
     [StringLength(255)]
     public string Title { get; set; } = null!;
@@ -27,17 +24,4 @@ public class Book
     [Required]
     [Range(0, int.MaxValue)]
     public int TotalCopies { get; set; }
-
-    [Required]
-    [Range(0, int.MaxValue)]
-    public int BorrowedCopies { get; set; }
-
-    [Required]
-    public int UserId { get; set; }
-
-    [ForeignKey("CategoryId")]
-    public Category Category { get; set; } = null!;
-
-    [ForeignKey("UserId")]
-    public User User { get; set; } = null!;
 }

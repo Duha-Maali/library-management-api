@@ -12,8 +12,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace LibraryManagement.Data.Migrations
 {
     [DbContext(typeof(LibraryDbContext))]
-    [Migration("20250702223048_AddUserIdToBorrowTable")]
-    partial class AddUserIdToBorrowTable
+    [Migration("20250706071032_InitialCreate")]
+    partial class InitialCreate
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -38,7 +38,7 @@ namespace LibraryManagement.Data.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("varchar(100)");
 
-                    b.Property<int>("AvailableCopies")
+                    b.Property<int>("BorrowedCopies")
                         .HasColumnType("int");
 
                     b.Property<int>("CategoryId")
@@ -59,9 +59,14 @@ namespace LibraryManagement.Data.Migrations
                     b.Property<int>("TotalCopies")
                         .HasColumnType("int");
 
+                    b.Property<int>("UserId")
+                        .HasColumnType("int");
+
                     b.HasKey("BookId");
 
                     b.HasIndex("CategoryId");
+
+                    b.HasIndex("UserId");
 
                     b.ToTable("Books");
 
@@ -70,34 +75,37 @@ namespace LibraryManagement.Data.Migrations
                         {
                             BookId = 1,
                             Author = "Harper Lee",
-                            AvailableCopies = 4,
+                            BorrowedCopies = 1,
                             CategoryId = 3,
                             ISBN = "9780446310788",
                             PublishedDate = new DateTime(1960, 7, 11, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             Title = "Introduction to Database Systems",
-                            TotalCopies = 5
+                            TotalCopies = 5,
+                            UserId = 2
                         },
                         new
                         {
                             BookId = 2,
                             Author = "Sami Omar",
-                            AvailableCopies = 2,
+                            BorrowedCopies = 1,
                             CategoryId = 1,
                             ISBN = "9780062316097",
                             PublishedDate = new DateTime(2011, 2, 10, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             Title = "Law of Palestine",
-                            TotalCopies = 3
+                            TotalCopies = 3,
+                            UserId = 2
                         },
                         new
                         {
                             BookId = 3,
                             Author = "Ahmed Khaled",
-                            AvailableCopies = 3,
+                            BorrowedCopies = 1,
                             CategoryId = 2,
                             ISBN = "9780553380163",
                             PublishedDate = new DateTime(1988, 3, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             Title = "The History of Palestine",
-                            TotalCopies = 4
+                            TotalCopies = 4,
+                            UserId = 2
                         });
                 });
 
@@ -192,7 +200,12 @@ namespace LibraryManagement.Data.Migrations
                         .IsUnicode(false)
                         .HasColumnType("varchar(15)");
 
+                    b.Property<int>("UserId")
+                        .HasColumnType("int");
+
                     b.HasKey("BorrowerId");
+
+                    b.HasIndex("UserId");
 
                     b.ToTable("Borrowers");
 
@@ -201,13 +214,15 @@ namespace LibraryManagement.Data.Migrations
                         {
                             BorrowerId = 1,
                             Name = "Ahmad Khaled",
-                            Phone = "1234567890"
+                            Phone = "1234567890",
+                            UserId = 1
                         },
                         new
                         {
                             BorrowerId = 2,
                             Name = "Sara Ali",
-                            Phone = "0987654321"
+                            Phone = "0987654321",
+                            UserId = 1
                         });
                 });
 
@@ -225,7 +240,15 @@ namespace LibraryManagement.Data.Migrations
                         .IsUnicode(true)
                         .HasColumnType("varchar(100)");
 
+                    b.Property<int>("UserId")
+                        .HasColumnType("int");
+
                     b.HasKey("CategoryId");
+
+                    b.HasIndex("CategoryName")
+                        .IsUnique();
+
+                    b.HasIndex("UserId");
 
                     b.ToTable("Categories");
 
@@ -233,17 +256,20 @@ namespace LibraryManagement.Data.Migrations
                         new
                         {
                             CategoryId = 1,
-                            CategoryName = "Law"
+                            CategoryName = "Law",
+                            UserId = 2
                         },
                         new
                         {
                             CategoryId = 2,
-                            CategoryName = "History"
+                            CategoryName = "History",
+                            UserId = 2
                         },
                         new
                         {
                             CategoryId = 3,
-                            CategoryName = "Education"
+                            CategoryName = "Education",
+                            UserId = 2
                         });
                 });
 
@@ -314,14 +340,14 @@ namespace LibraryManagement.Data.Migrations
                         new
                         {
                             UserId = 1,
-                            Password = "$2a$11$zdwrPf88HygS8pzTFVPQXOVbw4vmHdjqGv5q05a8OSHrkq1LrBBxu",
+                            Password = "$2a$11$eNbkjG4uP/Uj7Ag/rmojUuC50bQ4iPkLu94W267Xkhz3l9NtJuPSC",
                             RoleId = 1,
                             UserName = "Duha"
                         },
                         new
                         {
                             UserId = 2,
-                            Password = "$2a$11$5sKy3puSOilQ4cZs2Z6X2O5Ia1v0YQt8x0H3fq1G8zqjXWN53cYki",
+                            Password = "$2a$11$ltPc.60t4NPtDmk5FOhfp.yz0Ht.NxhZ/k7guKYi36b1y.n4K.IGG",
                             RoleId = 2,
                             UserName = "Ahmed"
                         });
@@ -335,7 +361,15 @@ namespace LibraryManagement.Data.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.HasOne("LibraryManagement.Data.Models.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
                     b.Navigation("Category");
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("LibraryManagement.Data.Models.Borrow", b =>
@@ -361,6 +395,28 @@ namespace LibraryManagement.Data.Migrations
                     b.Navigation("Book");
 
                     b.Navigation("Borrower");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("LibraryManagement.Data.Models.Borrower", b =>
+                {
+                    b.HasOne("LibraryManagement.Data.Models.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("LibraryManagement.Data.Models.Category", b =>
+                {
+                    b.HasOne("LibraryManagement.Data.Models.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
 
                     b.Navigation("User");
                 });

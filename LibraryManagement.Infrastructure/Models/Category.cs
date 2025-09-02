@@ -12,9 +12,9 @@ public class Category
     [StringLength(100)]
     public string CategoryName { get; set; } = null!;
 
-    //[Required]
-    //public int UserId { get; set; }
+    [Required]
+    public int UserId { get; set; }
 
-    //[ForeignKey("UserId")]
-    //public User User { get; set; } = null!;
+    [ForeignKey("UserId")]
+    public User User { get; set; } = null!;
 }

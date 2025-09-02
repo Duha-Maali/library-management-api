@@ -25,7 +25,9 @@ public class BorrowController : ControllerBase
     public async Task<IActionResult> GetAll()
     {
         var borrows = await _borrowService.GetAllAsync();
-        return Ok(borrows);
+        return borrows is not null
+            ? Ok(borrows)
+            : BadRequest("No borrows found.");
     }
 
     [HttpGet("{id}")]
@@ -34,7 +36,7 @@ public class BorrowController : ControllerBase
         var borrow = await _borrowService.GetByIdAsync(id);
         return borrow is not null
             ? Ok(borrow)
-            : BadRequest();
+            : BadRequest($"Borrow with ID {id} was not found.");
     }
 
     [HttpPost]
@@ -43,7 +45,8 @@ public class BorrowController : ControllerBase
         var createdBorrow = await _borrowService.CreateAsync(borrow);
         return createdBorrow is not null
             ? CreatedAtAction(nameof(GetById), new { id = createdBorrow.BorrowId }, createdBorrow)
-            : BadRequest("Invalid data");
+            : BadRequest("Failed to create borrow. Make sure the borrower and book exist, " +
+            "there are valid Total copies, and the due date is after the borrow date.");
     }
 
     [HttpPut("{id}")]
@@ -52,7 +55,7 @@ public class BorrowController : ControllerBase
         var updatedBorrow = await _borrowService.UpdateAsync(id, borrow);
         return updatedBorrow is not null
             ? Ok(updatedBorrow)
-            : BadRequest("Invalid data");
+            : BadRequest("Failed to update borrow. Ensure the borrow record exists and the return date is valid.");
     }
 
     [HttpDelete("{id}")]
@@ -61,6 +64,6 @@ public class BorrowController : ControllerBase
         var result = await _borrowService.DeleteAsync(id);
         return result
             ? NoContent()
-            : BadRequest("Invalid data");
+            : BadRequest("Failed to delete borrow. The record may not exist or the book has not been returned yet.");
     }
 }

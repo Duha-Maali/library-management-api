@@ -16,9 +16,9 @@ public class Borrower
     [StringLength(15)]
     public string Phone { get; set; } = null!;
 
-    //[Required]
-    //public int UserId { get; set; }
+    [Required]
+    public int UserId { get; set; }
 
-    //[ForeignKey("UserId")]
-    //public User User { get; set; } = null!;
+    [ForeignKey("UserId")]
+    public User User { get; set; } = null!;
 }

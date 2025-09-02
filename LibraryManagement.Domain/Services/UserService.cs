@@ -1,4 +1,5 @@
-﻿using System.IdentityModel.Tokens.Jwt;
+﻿using LibraryManagement.Business.Exceptions;
+using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
 using LibraryManagement.Business.IServices;
@@ -17,8 +18,9 @@ public class UserService : IUserService
     private readonly IConfiguration _configuration;
     private readonly ILogger<UserService> _logger;
     private readonly IHttpContextAccessor _httpContextAccessor;
+
     public UserService(
-        IUserRepository userRepository, 
+        IUserRepository userRepository,
         IConfiguration configuration,
         ILogger<UserService> logger,
         IHttpContextAccessor httpContextAccessor)
@@ -28,35 +30,30 @@ public class UserService : IUserService
         _logger = logger;
         _httpContextAccessor = httpContextAccessor;
     }
+
     public async Task<string?> LoginAsync(LoginVM request)
     {
-        using (_logger.BeginScope(new Dictionary<string, object>
-        {
-            ["UserId"] = _httpContextAccessor.HttpContext?.User.FindFirst("UserId")?.Value ?? "Unknown",
-            ["RoleName"] = _httpContextAccessor.HttpContext?.User.FindFirst(ClaimTypes.Role)?.Value ?? "Unknown"
-        }))
+        try
         {
             _logger.LogInformation("Login attempt for UserName: {UserName}", request.UserName);
             var user = await _userRepository.GetByUsernameAsync(request.UserName);
 
             if (user == null || !BCrypt.Net.BCrypt.Verify(request.Password, user.Password))
             {
-                _logger.LogWarning("Invalid login attempt for UserName: {UserName}, user with this name doesn't exist or invalid Password", request.UserName);
-                return null;
+                throw new InvalidCredentialsException(request.UserName);
             }
 
-            // Generate JWT token
             var jwtSettings = _configuration.GetSection("Jwt");
             var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSettings["Key"]));
             var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
             var claims = new[]
             {
-            new Claim(JwtRegisteredClaimNames.Sub, user.UserName),
-            new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
-            new Claim("UserId", user.UserId.ToString()),
-            new Claim(ClaimTypes.Role, user.Role.RoleName)
-        };
+                new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
+                new Claim("UserId", user.UserId.ToString()),
+                new Claim(ClaimTypes.Name, user.UserName),
+                new Claim(ClaimTypes.Role, user.Role.RoleName)
+            };
             var token = new JwtSecurityToken(
                 issuer: jwtSettings["Issuer"],
                 audience: jwtSettings["Audience"],
@@ -66,8 +63,18 @@ public class UserService : IUserService
 
             var tokenString = new JwtSecurityTokenHandler().WriteToken(token);
             _logger.LogInformation("Login successful for UserName: {UserName}, UserId: {UserId}, Role: {RoleName}",
-                    user.UserName, user.UserId, user.Role.RoleName);
+                user.UserName, user.UserId, user.Role.RoleName);
             return tokenString;
+        }
+        catch (BusinessException ex)
+        {
+            _logger.LogError(ex, "Business error during login for UserName: {UserName}: {Message}", request.UserName, ex.Message);
+            return null;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Unexpected error during login for UserName: {UserName}", request.UserName);
+            return null;
         }
     }
 }

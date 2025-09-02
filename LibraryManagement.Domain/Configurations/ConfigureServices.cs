@@ -1,4 +1,4 @@
-﻿using LibraryManagement.Business.Helpers;
+﻿using LibraryManagement.Business.Profiles;
 using LibraryManagement.Business.IServices;
 using LibraryManagement.Business.Services;
 using Microsoft.Extensions.DependencyInjection;
